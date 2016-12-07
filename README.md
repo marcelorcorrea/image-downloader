@@ -3,7 +3,7 @@ Image Downloader is small Java prototype lib that tries to download images from 
 
 It can be used by adding image-downloader-core.jar to your classpath. Or using a small Swing implementation included in this lib.
 
-You can try image-downloader from here: `http://104.131.96.246:8081/image-downloader-webstart/` (don't forget to include this address to 'java configure exceptions')
+You can try image-downloader from here: `https://104.131.96.246/image-downloader-webstart/` (don't forget to include this address to 'java configure exceptions')
 
 ####Build
 `mvn package`
@@ -29,9 +29,9 @@ To execute:
 
 
 ######Adding into your classpath
-Here's an example of how to use image-downloader from your project:
+Here's an example of how to use image-downloader in your project:
 
-First you need to implement ``ImageDownloaderCallback`` interface and its methods:
+First you need to implement ``ImageDownloaderListener`` interface and its methods:
     
     void onTaskStart(int numberOfImages);
 
@@ -48,9 +48,10 @@ First you need to implement ``ImageDownloaderCallback`` interface and its method
 Then provide this implementation to the constructor: 
 ```
 public static void main(String[] args) {
-    ImageDownloader imageDownloader = new GenericImageDownloader(imageDownloaderCallbackImp);
+    ImageDownloader imageDownloader = new GenericImageDownloader();
+    imageDownloader.setOnDownloadListener(imageDownloaderListenerImp);
     String url = "http://www.example.com;
-    `Here it looks for images of JPEG type`
+    //Here it looks for images of JPEG type
     images = imageDownloader.download(href, ContentType.JPEG);
 }
 ```
