@@ -1,0 +1,60 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.marcelorcorrea.imagedownloader</groupId>
+		<artifactId>image-downloader</artifactId>
+		<version>1.0-SNAPSHOT</version>
+	</parent>
+	<artifactId>image-downloader-webstart</artifactId>
+	<packaging>war</packaging>
+	<name>image-downloader-webstart</name>
+	<description>Web Start for Image Downloader</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+			<scope>provided</scope>
+			<version>2.5</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<finalName>image-downloader-webstart</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>dependency-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<!-- Copy the webstart bundle in as a resource before packaging starts. -->
+						<phase>process-resources</phase>
+						<goals>
+							<goal>unpack</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<artifactItems>
+						<artifactItem>
+							<groupId>com.marcelorcorrea.imagedownloader.swing</groupId>
+							<artifactId>image-downloader-swing</artifactId>
+							<version>1.0-SNAPSHOT</version>
+							<type>zip</type>
+						</artifactItem>
+					</artifactItems>
+					<outputDirectory>${project.build.directory}/${project.build.finalName}</outputDirectory>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.jboss.as.plugins</groupId>
+				<artifactId>jboss-as-maven-plugin</artifactId>
+				<version>7.7.Final</version>
+				<configuration>
+					<skip>false</skip>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

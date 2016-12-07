@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<jnlp spec="1.0+" codebase="https://104.131.96.246/image-downloader-webstart" href="$outputFile">
+ <information>
+    <title>Image Downloader Webstart</title>
+    <vendor>Marcelo Correa</vendor>
+ </information>
+ <security>
+ <all-permissions/>
+ </security>
+ <resources>
+    <j2se version="1.7+" initial-heap-size="128m" max-heap-size="512m" />
+    <property name="jnlp.versionEnabled" value="false"/>
+    $dependencies
+ </resources>
+ <application-desc main-class="$mainClass">
+ </application-desc>
+</jnlp>
+
+

@@ -1,0 +1,119 @@
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.marcelorcorrea.imagedownloader</groupId>
+        <artifactId>image-downloader</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+    <groupId>com.marcelorcorrea.imagedownloader.swing</groupId>
+    <artifactId>image-downloader-swing</artifactId>
+    <name>image-downloader-swing</name>
+    <packaging>jar</packaging>
+    <url>http://maven.apache.org</url>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring.version>3.0.5.RELEASE</spring.version>
+    </properties>
+
+    <build>
+        <plugins>
+            <!-- <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <finalName>Image-Downloader</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                    <archive>
+                        <manifest>
+                            <mainClass>MainFrame</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin> -->
+
+            <plugin>
+                <groupId>org.codehaus.mojo.webstart</groupId>
+                <artifactId>webstart-maven-plugin</artifactId>
+                <version>1.0-beta-2</version>
+
+                <executions>
+                    <execution>
+                        <id>package</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jnlp-inline</goal>
+                        </goals>
+                    </execution>
+                </executions>
+
+                <configuration>
+                    <jnlp>
+                        <outputFile>launch.jnlp</outputFile>
+                        <mainClass>com.marcelorcorrea.imagedownloader.swing.MainFrame</mainClass>
+                    </jnlp>
+
+                    <libPath>lib</libPath>
+
+                    <sign>
+                        <keystore>ImageDownloader-KeyStore</keystore>
+                        <keypass>imagedownloader</keypass>
+                        <storepass>imagedownloader</storepass>
+                        <alias>ImageDownloader</alias>
+                        <validity>3650</validity>
+
+                        <dnameCn>Marcelo Correa</dnameCn>
+                        <dnameOu>MRC Unit</dnameOu>
+                        <dnameO>MRC Developing</dnameO>
+                        <dnameL>Porto Alegre</dnameL>
+                        <dnameSt>RS</dnameSt>
+                        <dnameC>BR</dnameC>
+
+                        <verify>true</verify>
+                        <keystoreConfig>
+                            <delete>true</delete>
+                            <gen>true</gen>
+                        </keystoreConfig>
+                    </sign>
+
+                    <pack200>false</pack200>
+                    <gzip>true</gzip>
+                    <outputJarVersions>false</outputJarVersions>
+                    <verbose>true</verbose>
+
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.marcelorcorrea.imagedownloader.core</groupId>
+            <artifactId>image-downloader-core</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-jpeg</artifactId>
+            <version>3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-tiff</artifactId>
+            <version>3.0</version>
+        </dependency>
+    </dependencies>
+</project>
