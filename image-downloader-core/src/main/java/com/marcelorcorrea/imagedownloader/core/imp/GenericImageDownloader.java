@@ -63,7 +63,7 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
     }
 
     @Override
-    public void download(String url, ContentType selectedContentType) throws ImageDownloaderException, UnknownContentTypeException {
+    public void download(String url, ContentType selectedContentType, int width, int height) throws ImageDownloaderException, UnknownContentTypeException {
         try {
             if (url == null || url.isEmpty()) {
                 logger.error("URL is a required field.");
@@ -93,9 +93,9 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
 
 
             if (isContentTypeHTML) {
-                downloadImagesFromURL(url, selectedContentType);
+                downloadImagesFromURL(url, selectedContentType, width, height);
             } else {
-                downloadSingleImageFromURL(url, selectedContentType);
+                downloadSingleImageFromURL(url, selectedContentType, width, height);
             }
 
         } catch (IOException | URISyntaxException e) {
@@ -104,7 +104,7 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
         }
     }
 
-    private void downloadImagesFromURL(String url, ContentType selectedContentType) {
+    private void downloadImagesFromURL(String url, ContentType selectedContentType, int width, int height) {
         try {
             // Get image sources using mParser
             Set<String> imgSources = mParser.parse(url, selectedContentType);
@@ -113,7 +113,7 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
 
             List<ListenableFuture<DownloadedImage>> listenableFutures = new ArrayList<>();
             for (String source : imgSources) {
-                ListenableFuture<DownloadedImage> listenableFuture = createAndSubmitWork(source, selectedContentType);
+                ListenableFuture<DownloadedImage> listenableFuture = createAndSubmitWork(source, selectedContentType, width, height);
                 listenableFutures.add(listenableFuture);
             }
             ListenableFuture<List<DownloadedImage>> listListenableFuture = Futures.successfulAsList(listenableFutures);
@@ -134,9 +134,9 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
         }
     }
 
-    private void downloadSingleImageFromURL(String imgSource, ContentType selectedContentType) throws IOException {
+    private void downloadSingleImageFromURL(String imgSource, ContentType selectedContentType, int width, int height) throws IOException {
         mListener.onTaskStart(1);
-        ListenableFuture<DownloadedImage> listenableFuture = createAndSubmitWork(imgSource, selectedContentType);
+        ListenableFuture<DownloadedImage> listenableFuture = createAndSubmitWork(imgSource, selectedContentType, width, height);
         Futures.addCallback(listenableFuture, new FutureCallback<DownloadedImage>() {
             @Override
             public void onSuccess(DownloadedImage result) {
@@ -151,8 +151,8 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
         });
     }
 
-    private ListenableFuture<DownloadedImage> createAndSubmitWork(final String imgSource, ContentType selectedContentType) {
-        Callable<DownloadedImage> callable = createDownloadedImageCallable(imgSource, selectedContentType);
+    private ListenableFuture<DownloadedImage> createAndSubmitWork(final String imgSource, ContentType selectedContentType, int width, int height) {
+        Callable<DownloadedImage> callable = createDownloadedImageCallable(imgSource, selectedContentType, width, height);
         ListenableFuture<DownloadedImage> future = pool.submit(callable);
         Futures.addCallback(future, new FutureCallback<DownloadedImage>() {
             @Override
@@ -176,16 +176,16 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
     }
 
     private Callable<DownloadedImage> createDownloadedImageCallable(final String imgSource,
-                                                                    final ContentType selectedContentType) {
+                                                                    final ContentType selectedContentType,
+                                                                    final int width,
+                                                                    final int height) {
         return new Callable<DownloadedImage>() {
             @Override
             public DownloadedImage call() throws Exception {
-                if (mImageFetcher.isContentTypeSupported(imgSource, selectedContentType)) {
-                    byte[] imageInBytes = mImageFetcher.downloadImage(imgSource);
-                    if (imageInBytes != null) {
-                        String name = Util.getFilename(imgSource, selectedContentType.getRawValue());
-                        return new DownloadedImage(imageInBytes, name);
-                    }
+                byte[] imageInBytes = mImageFetcher.downloadImage(imgSource, selectedContentType, width, height);
+                if (imageInBytes != null) {
+                    String name = Util.getFilename(imgSource, selectedContentType.getRawValue());
+                    return new DownloadedImage(imageInBytes, name);
                 }
                 return null;
             }

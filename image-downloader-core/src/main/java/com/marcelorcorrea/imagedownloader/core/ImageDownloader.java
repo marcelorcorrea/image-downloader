@@ -13,7 +13,7 @@ import java.util.List;
 
 public interface ImageDownloader {
 
-    void download(String path, ContentType extension) throws ImageDownloaderException, UnknownContentTypeException;
+    void download(String path, ContentType extension, int width, int height) throws ImageDownloaderException, UnknownContentTypeException;
 
     boolean writeToDisk(List<DownloadedImage> images, File directory);
 

@@ -2,12 +2,13 @@ package com.marcelorcorrea.imagedownloader.core.http;
 
 import com.marcelorcorrea.imagedownloader.core.fetcher.ImageFetcher;
 import com.marcelorcorrea.imagedownloader.core.model.ContentType;
+import com.marcelorcorrea.imagedownloader.core.util.SimpleImageInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -21,33 +22,41 @@ public class DownloadManager implements ImageFetcher {
     private static final int BUF_SIZE = 0x1000; // 4K
     private ImageFetcherCallback listener;
 
-    public byte[] downloadImage(final String link) throws IOException {
+    public byte[] downloadImage(final String link, ContentType selectedContentType, int width, int height) throws IOException {
         HttpURLConnection request = (HttpURLConnection) new URL(link).openConnection();
-        // add request header
         request.setRequestMethod("GET");
         request.setRequestProperty("User-Agent", USER_AGENT);
         request.connect();
         if (request.getResponseCode() == HttpURLConnection.HTTP_OK) {
             logger.info("Downloading: " + link);
-            int contentLength = request.getContentLength();
-            listener.notifyDownloadStart(link, contentLength);
-            try {
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                InputStream from = request.getInputStream();
-                byte[] buf = new byte[BUF_SIZE];
-                long total = 0;
-                while (true) {
-                    int r = from.read(buf);
-                    if (r == -1) {
-                        break;
+            BufferedInputStream bufferedInputStream = new BufferedInputStream(request.getInputStream());
+            bufferedInputStream.mark(1000);
+            SimpleImageInfo simpleImageInfo = new SimpleImageInfo(bufferedInputStream);
+            bufferedInputStream.reset();
+
+            ContentType imageContentType = ContentType.getContentType(simpleImageInfo.getMimeType());
+            if (isContentTypeSupported(imageContentType, selectedContentType)) {
+                if (simpleImageInfo.getWidth() > width && simpleImageInfo.getHeight() > height) {
+                    int contentLength = request.getContentLength();
+                    listener.notifyDownloadStart(link, contentLength);
+                    try {
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        byte[] buf = new byte[BUF_SIZE];
+                        long total = 0;
+                        while (true) {
+                            int r = bufferedInputStream.read(buf);
+                            if (r == -1) {
+                                break;
+                            }
+                            out.write(buf, 0, r);
+                            total += r;
+                            listener.notifyDownloadProgress(link, (int) total);
+                        }
+                        return out.toByteArray();
+                    } finally {
+                        request.disconnect();
                     }
-                    out.write(buf, 0, r);
-                    total += r;
-                    listener.notifyDownloadProgress(link, (int) total);
                 }
-                return out.toByteArray();
-            } finally {
-                request.disconnect();
             }
         }
         return null;
@@ -58,8 +67,7 @@ public class DownloadManager implements ImageFetcher {
         listener = fetcherCallback;
     }
 
-    public boolean isContentTypeSupported(String url, ContentType selectedContentType) {
-        ContentType imageContentType = getContentType(url);
+    private boolean isContentTypeSupported(ContentType imageContentType, ContentType selectedContentType) {
         return imageContentType != null &&
                 (imageContentType.equals(selectedContentType) ||
                         (imageContentType.isJPG() && selectedContentType.isJPG()));

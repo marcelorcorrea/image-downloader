@@ -286,8 +286,10 @@ public class MainFrame extends JFrame implements ImageDownloaderListener {
         ImageCache.clear();
         clearAvailableImages();
         disableComponents();
+        int width = !txtWidth.getText().isEmpty() ? Integer.parseInt(txtWidth.getText()) : 0;
+        int height = !txtHeight.getText().isEmpty() ? Integer.parseInt(txtHeight.getText()) : 0;
         try {
-            downloader.download(address.getText().trim(), (ContentType) extension.getSelectedItem());
+            downloader.download(address.getText().trim(), (ContentType) extension.getSelectedItem(), width, height);
         } catch (ImageDownloaderException | UnknownContentTypeException ex) {
             enableComponents();
             logger.error("Exception: " + ex + " -- message: " + ex.getMessage());
@@ -317,7 +319,6 @@ public class MainFrame extends JFrame implements ImageDownloaderListener {
 
     @Override
     public void onTaskStart(int numberOfImages) {
-//        logger.warn("onTaskStart ");
         logger.warn("Number of Total Files: " + numberOfImages);
         numberOfDownloadedImages = numberOfImages;
         if (numberOfDownloadedImages == 0) {
@@ -340,7 +341,7 @@ public class MainFrame extends JFrame implements ImageDownloaderListener {
     public void onDownloadComplete(String url, DownloadedImage downloadedImage) {
         try {
             BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(downloadedImage.getBytes()));
-            if (hasValidDimension(bufferedImage)) {
+            if (bufferedImage != null) {
                 ImageCache.cache(downloadedImage.getName(), bufferedImage);
                 listModel.addElement(downloadedImage);
                 listModel.update();
@@ -366,12 +367,6 @@ public class MainFrame extends JFrame implements ImageDownloaderListener {
         currentNumberOfDownloadedImages.getAndIncrement();
         progressBar.setValue(currentNumberOfDownloadedImages.get());
         progressBar.setString((currentNumberOfDownloadedImages.get() * 100) / numberOfDownloadedImages + "%");
-    }
-
-    private boolean hasValidDimension(BufferedImage bufferedImage) {
-        int width = !txtWidth.getText().isEmpty() ? Integer.parseInt(txtWidth.getText()) : 0;
-        int height = !txtHeight.getText().isEmpty() ? Integer.parseInt(txtHeight.getText()) : 0;
-        return bufferedImage != null && bufferedImage.getWidth() >= width && bufferedImage.getHeight() >= height;
     }
 
     private void openFullScreenImage(List<DownloadedImage> images, int index) {

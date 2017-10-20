@@ -16,11 +16,9 @@ public interface ImageFetcher {
         void notifyDownloadProgress(String link, int total);
     }
 
+    byte[] downloadImage(String url, ContentType selectedContentType, int width, int height) throws IOException;
+
     ContentType getContentType(String url);
-
-    boolean isContentTypeSupported(String url, ContentType contentType);
-
-    byte[] downloadImage(String url) throws IOException;
 
     void setListener(ImageFetcherCallback fetcherCallback);
 }
