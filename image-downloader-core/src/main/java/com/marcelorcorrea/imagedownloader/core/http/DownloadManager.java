@@ -68,16 +68,23 @@ public class DownloadManager implements ImageFetcher {
     public ContentType getContentType(String url) {
         ContentType contentType = null;
         try {
-            HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-            connection.setRequestMethod("HEAD");
+            HttpURLConnection connection = openConnection(url, "HEAD");
             contentType = ContentType.getContentType(connection.getContentType());
             if (contentType == null) {
-                logger.warn("Could not retrieve content type.");
+                logger.warn("Could not retrieve content type using HEAD method. Attempting to retrieve it with GET method");
+                connection = openConnection(url, "GET");
+                contentType = ContentType.getContentType(connection.getContentType());
             }
             connection.disconnect();
         } catch (IOException e) {
             e.printStackTrace();
         }
         return contentType;
+    }
+
+    private HttpURLConnection openConnection(String url, String method) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        connection.setRequestMethod(method);
+        return connection;
     }
 }
