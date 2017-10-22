@@ -97,7 +97,8 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
             } else {
                 downloadSingleImageFromURL(url, selectedContentType, width, height);
             }
-
+        } catch (UnknownContentTypeException e) {
+            throw e;
         } catch (IOException | URISyntaxException e) {
             logger.error(e.getMessage());
             throw new ImageDownloaderException(e);
