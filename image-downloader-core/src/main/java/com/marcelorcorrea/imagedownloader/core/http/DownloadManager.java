@@ -1,5 +1,6 @@
 package com.marcelorcorrea.imagedownloader.core.http;
 
+import com.marcelorcorrea.imagedownloader.core.exception.UnknownContentTypeException;
 import com.marcelorcorrea.imagedownloader.core.fetcher.ImageFetcher;
 import com.marcelorcorrea.imagedownloader.core.model.ContentType;
 import com.marcelorcorrea.imagedownloader.core.util.SimpleImageInfo;
@@ -27,19 +28,18 @@ public class DownloadManager implements ImageFetcher {
         request.setRequestMethod("GET");
         request.setRequestProperty("User-Agent", USER_AGENT);
         request.connect();
-        if (request.getResponseCode() == HttpURLConnection.HTTP_OK) {
-            logger.info("Downloading: " + link);
-            BufferedInputStream bufferedInputStream = new BufferedInputStream(request.getInputStream());
-            bufferedInputStream.mark(1000);
-            SimpleImageInfo simpleImageInfo = new SimpleImageInfo(bufferedInputStream);
-            bufferedInputStream.reset();
+        try {
+            if (request.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                logger.info("Downloading: " + link);
+                BufferedInputStream bufferedInputStream = new BufferedInputStream(request.getInputStream());
 
-            ContentType imageContentType = ContentType.getContentType(simpleImageInfo.getMimeType());
-            if (isContentTypeSupported(imageContentType, selectedContentType)) {
-                if (simpleImageInfo.getWidth() > width && simpleImageInfo.getHeight() > height) {
-                    int contentLength = request.getContentLength();
-                    listener.notifyDownloadStart(link, contentLength);
-                    try {
+                SimpleImageInfo simpleImageInfo = simpleImageInfo(bufferedInputStream);
+                ContentType imageContentType = ContentType.getContentType(simpleImageInfo.getMimeType());
+
+                if (isContentTypeSupported(imageContentType, selectedContentType)) {
+                    if (simpleImageInfo.getWidth() > width && simpleImageInfo.getHeight() > height) {
+                        int contentLength = request.getContentLength();
+                        listener.notifyDownloadStart(link, contentLength);
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         byte[] buf = new byte[BUF_SIZE];
                         long total = 0;
@@ -53,11 +53,15 @@ public class DownloadManager implements ImageFetcher {
                             listener.notifyDownloadProgress(link, (int) total);
                         }
                         return out.toByteArray();
-                    } finally {
-                        request.disconnect();
+                    } else {
+                        throw new IllegalArgumentException("Image dimensions are not in accordance with provided dimensions.");
                     }
+                } else {
+                    throw new UnknownContentTypeException("Image Content Type " + imageContentType + " not supported.");
                 }
             }
+        } finally {
+            request.disconnect();
         }
         return null;
     }
@@ -82,6 +86,9 @@ public class DownloadManager implements ImageFetcher {
                 logger.warn("Could not retrieve content type using HEAD method. Attempting to retrieve it with GET method");
                 connection = openConnection(url, "GET");
                 contentType = ContentType.getContentType(connection.getContentType());
+                if (contentType == null) {
+                    logger.warn("Could not retrieve content type.");
+                }
             }
             connection.disconnect();
         } catch (IOException e) {
@@ -94,5 +101,12 @@ public class DownloadManager implements ImageFetcher {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setRequestMethod(method);
         return connection;
+    }
+
+    private SimpleImageInfo simpleImageInfo(BufferedInputStream bufferedInputStream) throws IOException {
+        bufferedInputStream.mark(1000);
+        SimpleImageInfo simpleImageInfo = new SimpleImageInfo(bufferedInputStream);
+        bufferedInputStream.reset();
+        return simpleImageInfo;
     }
 }

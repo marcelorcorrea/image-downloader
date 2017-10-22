@@ -168,17 +168,14 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
             @Override
             public void onFailure(Throwable throwable) {
                 mListener.onDownloadFail(imgSource);
-                throwable.printStackTrace();
-                logger.error("Error while downloading image: " + throwable.getCause() + " -- " + throwable.getMessage());
+                logger.error(throwable.toString());
             }
         });
         return future;
     }
 
-    private Callable<DownloadedImage> createDownloadedImageCallable(final String imgSource,
-                                                                    final ContentType selectedContentType,
-                                                                    final int width,
-                                                                    final int height) {
+    private Callable<DownloadedImage> createDownloadedImageCallable(final String imgSource, final ContentType selectedContentType,
+                                                                    final int width, final int height) {
         return new Callable<DownloadedImage>() {
             @Override
             public DownloadedImage call() throws Exception {

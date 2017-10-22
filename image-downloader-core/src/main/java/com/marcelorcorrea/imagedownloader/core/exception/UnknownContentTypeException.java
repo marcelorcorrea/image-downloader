@@ -1,9 +1,11 @@
 package com.marcelorcorrea.imagedownloader.core.exception;
 
+import java.io.IOException;
+
 /**
  * Created by marcelo on 11/1/16.
  */
-public class UnknownContentTypeException extends Exception {
+public class UnknownContentTypeException extends IOException {
 
     public UnknownContentTypeException(String message) {
         super(message);
