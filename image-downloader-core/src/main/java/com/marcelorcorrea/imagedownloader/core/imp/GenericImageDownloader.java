@@ -55,11 +55,9 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
             mImageFetcher = new DownloadManager();
             mImageFetcher.setListener(this);
         }
-        if (mParser == null) {
-            //Look for best mParser (currently there are two parsers)
-            mParser = ParserFactory.getParser(url);
-            logger.info("Using " + mParser.getClass().getSimpleName());
-        }
+        //Look for best mParser (currently there are two parsers)
+        mParser = ParserFactory.getParser(url);
+        logger.info("Using " + mParser.getClass().getSimpleName());
     }
 
     @Override
