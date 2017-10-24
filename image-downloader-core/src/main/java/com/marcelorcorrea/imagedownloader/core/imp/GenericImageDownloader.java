@@ -2,7 +2,8 @@ package com.marcelorcorrea.imagedownloader.core.imp;
 
 import com.google.common.collect.Iterables;
 import com.google.common.io.Files;
-import com.google.common.util.concurrent.*;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.marcelorcorrea.imagedownloader.core.ImageDownloader;
 import com.marcelorcorrea.imagedownloader.core.exception.ImageDownloaderException;
 import com.marcelorcorrea.imagedownloader.core.exception.UnknownContentTypeException;
@@ -22,11 +23,12 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 /**
  * @author Marcelo Correa
@@ -110,82 +112,70 @@ public class GenericImageDownloader implements ImageDownloader, ImageFetcher.Ima
             // Fire OnTaskStart Callback with the number of links to download.
             mListener.onTaskStart(imgSources.size());
 
-            List<ListenableFuture<DownloadedImage>> listenableFutures = new ArrayList<>();
-            for (String source : imgSources) {
-                ListenableFuture<DownloadedImage> listenableFuture = createAndSubmitWork(source, selectedContentType, width, height);
-                listenableFutures.add(listenableFuture);
-            }
-            ListenableFuture<List<DownloadedImage>> listListenableFuture = Futures.successfulAsList(listenableFutures);
-            Futures.addCallback(listListenableFuture, new FutureCallback<List<DownloadedImage>>() {
-                @Override
-                public void onSuccess(List<DownloadedImage> result) {
-                    logger.info("Finished processing {} elements", Iterables.size(result));
-                    mListener.onTaskFinished();
-                }
+            List<CompletableFuture<DownloadedImage>> downloadFutures = imgSources.stream()
+                    .map(img -> downloadImage(img, selectedContentType, width, height))
+                    .collect(Collectors.toList());
 
-                @Override
-                public void onFailure(Throwable t) {
-                    logger.info("Failed because of :: {}", t);
+            CompletableFuture<List<DownloadedImage>> sequence = sequence(downloadFutures);
+            sequence.handle((downloadedImages, throwable) -> {
+                if (downloadedImages != null) {
+                    logger.info("Finished processing {} elements", Iterables.size(downloadedImages));
+                } else {
+                    logger.warn("EXCEPTION AQUI: " + throwable.toString());
                 }
+                mListener.onTaskFinished();
+                return null;
             });
         } catch (Exception ex) {
             logger.error("Error while downloading image: " + ex.getClass());
         }
     }
 
+    private static <T> CompletableFuture<List<T>> sequence(List<CompletableFuture<T>> futures) {
+        CompletableFuture<Void> allDoneFuture = CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]));
+        return allDoneFuture.thenApply(v ->
+                futures.stream().
+                        map(CompletableFuture::join).
+                        collect(Collectors.toList())
+        );
+    }
+
     private void downloadSingleImageFromURL(String imgSource, ContentType selectedContentType, int width, int height) throws IOException {
         mListener.onTaskStart(1);
-        ListenableFuture<DownloadedImage> listenableFuture = createAndSubmitWork(imgSource, selectedContentType, width, height);
-        Futures.addCallback(listenableFuture, new FutureCallback<DownloadedImage>() {
-            @Override
-            public void onSuccess(DownloadedImage result) {
-                logger.info("Finished processing single image {}", result);
-                mListener.onTaskFinished();
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                logger.info("Failed because of :: {}", t);
-            }
+        downloadImage(imgSource, selectedContentType, width, height).thenAccept(downloadedImage -> {
+            logger.info("Finished processing single image {}", downloadedImage);
+            mListener.onTaskFinished();
         });
     }
 
-    private ListenableFuture<DownloadedImage> createAndSubmitWork(final String imgSource, ContentType selectedContentType, int width, int height) {
-        Callable<DownloadedImage> callable = createDownloadedImageCallable(imgSource, selectedContentType, width, height);
-        ListenableFuture<DownloadedImage> future = pool.submit(callable);
-        Futures.addCallback(future, new FutureCallback<DownloadedImage>() {
-            @Override
-            public void onSuccess(DownloadedImage downloadedImage) {
-                if (downloadedImage != null) {
-                    mListener.onDownloadComplete(imgSource, downloadedImage);
-                } else {
-                    logger.error("Error while downloading image: {}", imgSource);
-                    mListener.onDownloadFail(imgSource);
-                }
-            }
 
-            @Override
-            public void onFailure(Throwable throwable) {
-                mListener.onDownloadFail(imgSource);
-                logger.error(throwable.toString());
-            }
-        });
-        return future;
-    }
-
-    private Callable<DownloadedImage> createDownloadedImageCallable(final String imgSource, final ContentType selectedContentType,
-                                                                    final int width, final int height) {
-        return new Callable<DownloadedImage>() {
-            @Override
-            public DownloadedImage call() throws Exception {
+    private CompletableFuture<DownloadedImage> downloadImage(final String imgSource, final ContentType selectedContentType,
+                                                             final int width, final int height) {
+        CompletableFuture<DownloadedImage> completable = CompletableFuture.supplyAsync(() -> {
+            try {
                 byte[] imageInBytes = mImageFetcher.downloadImage(imgSource, selectedContentType, width, height);
                 if (imageInBytes != null) {
                     String name = Util.getFilename(imgSource, selectedContentType.getRawValue());
                     return new DownloadedImage(imageInBytes, name);
                 }
-                return null;
+            } catch (IOException e) {
+                throw new CompletionException(e);
             }
-        };
+            return null;
+        });
+        completable.thenAccept(downloadedImage -> {
+            if (downloadedImage != null) {
+                mListener.onDownloadComplete(imgSource, downloadedImage);
+            } else {
+                logger.error("Error while downloading image: {}", imgSource);
+                mListener.onDownloadFail(imgSource);
+            }
+        }).exceptionally(throwable -> {
+            mListener.onDownloadFail(imgSource);
+            logger.error(throwable.toString());
+            return null;
+        });
+        return completable;
     }
 
     @Override
